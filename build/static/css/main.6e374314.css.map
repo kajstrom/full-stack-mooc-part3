@@ -1,0 +1,1 @@
+{"version":3,"sources":["index.css"],"names":[],"mappings":"AAAA,cACI,sBACA,uBACA,aACA,eACA,eAAkB","file":"static/css/main.6e374314.css","sourcesContent":[".notification {\r\n    border: 1px black solid;\r\n    background-color: green;\r\n    padding: 15px;\r\n    font-size: 20px;\r\n    font-weight: bold;\r\n}\n\n\n// WEBPACK FOOTER //\n// ./src/index.css"],"sourceRoot":""}

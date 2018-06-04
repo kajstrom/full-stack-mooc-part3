@@ -2,12 +2,13 @@ const express = require("express")
 const app = express()
 const bodyParser = require("body-parser")
 const morgan = require("morgan")
+const cors = require("cors");
 
 app.use(bodyParser.json())
-
 morgan.token("bodyJson", function (req, res) {return JSON.stringify(req.body)})
-
 app.use(morgan(':method :url :bodyJson :status :res[content-length] - :response-time ms'))
+app.use(express.static("build"))
+app.use(cors())
 
 let persons = [
     {
@@ -68,13 +69,15 @@ app.post("/persons", (request, response) => {
     }
 
 
-    persons = persons.concat({
+    const person = {
         name,
         number,
         id
-    })
+    }
 
-    response.status(201).end()
+    persons = persons.concat(person)
+
+    response.status(201).json(person)
 })
 
 app.delete("/persons/:id", (request, response) => {
@@ -94,6 +97,7 @@ app.get("/info", (request, response) => {
     </html>`)
 })
 
+const PORT = process.env.PORT || 3001
 app.listen(3001, () => {
     console.log("Server running on port 3001")
 })
