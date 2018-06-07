@@ -2,58 +2,35 @@ const express = require("express")
 const app = express()
 const bodyParser = require("body-parser")
 const morgan = require("morgan")
-const cors = require("cors");
+const cors = require("cors")
+const Person = require("./models/person")
 
 app.use(bodyParser.json())
-morgan.token("bodyJson", function (req, res) {return JSON.stringify(req.body)})
-app.use(morgan(':method :url :bodyJson :status :res[content-length] - :response-time ms'))
+morgan.token("bodyJson", function (req) {return JSON.stringify(req.body)})
+app.use(morgan(":method :url :bodyJson :status :res[content-length] - :response-time ms"))
 app.use(express.static("build"))
 app.use(cors())
 
-let persons = [
-    {
-        name: "Arto Hellas",
-        number: "040-123456",
-        id: 1
-    },
-    {
-        name: "Martti Tienari",
-        number: "040-123456",
-        id: 2
-    },
-    {
-        name: "Arto Järvinen",
-        number: "040-123456",
-        id: 3
-    },
-    {
-        name: "Lea Kutvonen",
-        number: "040-123456",
-        id: 4
-    }
-]
-
 app.get("/persons", (request, response) => {
-    response.json(persons)
+    Person
+        .find({})
+        .then(persons => {
+            response.json(persons.map(Person.format))
+        })
+        .catch(error => {
+            console.log(error)
+        })
 })
 
 app.get("/persons/:id", (request, response) => {
-    const id = Number(request.params.id)
-    const person = persons.find(p => p.id === id)
+    const id = request.params.id
 
-    if (person)  {
-        response.json(person)
-    } else {
-        response.status(404).end()
-    }
+    Person.findById(id)
+        .then(p => response.json(Person.format(p)))
+        .catch(e => console.log(e))
 })
 
-const generateRandomId = () => {
-    return Math.floor(Math.random() * 10000)
-}
-
 app.post("/persons", (request, response) => {
-    const id = generateRandomId()
     const {name, number} = request.body
 
     if (name === undefined) {
@@ -64,37 +41,63 @@ app.post("/persons", (request, response) => {
         return response.status(400).json({error: "number is missing"})
     }
 
-    if (undefined !== persons.find(p => p.name === name)) {
-        return response.status(400).json({error: `person with name ${name} already exists!`})
-    }
-
-
-    const person = {
+    const aPerson = new Person({
         name,
         number,
-        id
-    }
+    })
 
-    persons = persons.concat(person)
+    aPerson
+        .save()
+        .then(person => {
+            response.status(201).json(Person.format(person))
+        })
+        .catch(error => {
+            console.log(error)
 
-    response.status(201).json(person)
+            if (error.code === 11000) {
+                response.status(409).json({error_message: `Cannot add duplicate person: ${name}`})
+            } else {
+                response.status(500).end()
+            }
+        })
 })
 
 app.delete("/persons/:id", (request, response) => {
-    const id = Number(request.params.id)
+    Person
+        .findByIdAndRemove(request.params.id)
+        .then(() => {
+            response.status(204).end()
+        })
+        .catch(error => {
+            console.log(error)
+            response.status(400).end()
+        })
+})
 
-    persons = persons.filter(p => p.id !== id)
+app.put("/persons/:id", (request, response) => {
+    const id = request.params.id
+    const {name, number} = request.body
 
-    response.status(204).end()
+    Person
+        .findByIdAndUpdate(id, {name, number}, {new: true})
+        .then(p => response.json(Person.format(p)))
+        .catch(error => console.log(error))
 })
 
 app.get("/info", (request, response) => {
-    response.send(`<html>
-    <body>
-        <p>puhelinluettelossa on ${persons.length} henkilön tiedot</p>
-        <p>${new Date()}</p>
-    </body>
-    </html>`)
+    Person
+        .count()
+        .then(c => {
+            response.send(`<html>
+                <body>
+                    <p>puhelinluettelossa on ${c} henkilön tiedot</p>
+                    <p>${new Date()}</p>
+                </body>
+                </html>`)
+        })
+        .catch(e => console.log(e))
+
+    
 })
 
 const PORT = process.env.PORT || 3001
